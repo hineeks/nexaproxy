@@ -124,3 +124,7 @@ cd nexaproxy
 <div align="center">
   <strong>NexaProxy</strong> — с уважением к вашей приватности.
 </div>
+
+
+
+[](https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/ESRB_2000_Everyone.svg/960px-ESRB_2000_Everyone.svg.png)
