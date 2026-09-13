@@ -1,0 +1,272 @@
+/******************************************************************************
+ *                                                                            *
+ * Copyright (C) 2024  hineeks                                               *
+ * Copyright (C) 2021 by hineeks             *
+ *                                                                            *
+ * This program is free software: you can redistribute it and/or modify       *
+ * it under the terms of the GNU General Public License as published by       *
+ * the Free Software Foundation, either version 3 of the License, or          *
+ *  (at your option) any later version.                                       *
+ *                                                                            *
+ * This program is distributed in the hope that it will be useful,            *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of             *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              *
+ * GNU General Public License for more details.                               *
+ *                                                                            *
+ * You should have received a copy of the GNU General Public License          *
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.      *
+ *                                                                            *
+ ******************************************************************************/
+
+package com.hineeks.nexaproxy.group
+
+import androidx.core.net.toUri
+import com.hineeks.nexaproxy.R
+import com.hineeks.nexaproxy.NexaProxy
+import com.hineeks.nexaproxy.database.DataStore
+import com.hineeks.nexaproxy.database.GroupManager
+import com.hineeks.nexaproxy.database.ProxyEntity
+import com.hineeks.nexaproxy.database.ProxyGroup
+import com.hineeks.nexaproxy.database.NexaProxyDatabase
+import com.hineeks.nexaproxy.database.SubscriptionBean
+import com.hineeks.nexaproxy.fmt.AbstractBean
+import com.hineeks.nexaproxy.ktx.*
+import libexclavecore.Libexclavecore
+import org.yaml.snakeyaml.DumperOptions
+import org.yaml.snakeyaml.LoaderOptions
+import org.yaml.snakeyaml.Yaml
+import org.yaml.snakeyaml.nodes.Tag
+import org.yaml.snakeyaml.representer.Representer
+import org.yaml.snakeyaml.resolver.Resolver
+import java.util.regex.Pattern
+
+object AgeUpdater : GroupUpdater() {
+
+    override suspend fun doUpdate(
+        proxyGroup: ProxyGroup,
+        subscription: SubscriptionBean,
+        userInterface: GroupManager.Interface?,
+        byUser: Boolean
+    ) {
+
+        val link = subscription.link
+        var proxies: List<AbstractBean>
+        if (link.startsWith("content://", ignoreCase = true)) {
+            val content = app.contentResolver.openInputStream(link.toUri())?.readBytes()
+            val data = Libexclavecore.ageArmerDecrypt(content, subscription.agePrivateKey)
+            proxies = data?.let { parseRaw(String(data)) } ?: error(app.getString(R.string.no_proxies_found_in_subscription))
+        } else {
+            val response = Libexclavecore.newHttpClient().apply {
+                if (NexaProxy.started && DataStore.startedProfile > 0) {
+                    useUDS(NexaProxy.deviceStorage.noBackupFilesDir.toString() + "/ipc.sock")
+                }
+            }.newRequest().apply {
+                setURL(subscription.link)
+                if (subscription.customUserAgent.isNotEmpty()) {
+                    setUserAgent(subscription.customUserAgent)
+                } else {
+                    setUserAgent(USER_AGENT)
+                }
+                if (subscription.httpHeaders.isNotEmpty()) {
+                    for (header in subscription.httpHeaders.replace("\r\n", "\n").split("\n")) {
+                        if (header.isEmpty()) continue
+                        if (!header.contains(":")) error("invalid http header")
+                        setHeader(header.substringBefore(":"), header.substringAfter(":").trimStart())
+                    }
+                }
+            }.execute()
+
+            val data = Libexclavecore.ageArmerDecrypt(response.content, subscription.agePrivateKey)
+            proxies = data?.let { parseRaw(String(data)) } ?: error(app.getString(R.string.no_proxies_found))
+
+            val subscriptionUserinfo = response.getHeader("Subscription-Userinfo")
+            if (subscriptionUserinfo.isNotEmpty()) {
+                fun get(regex: String): String? {
+                    return regex.toRegex().findAll(subscriptionUserinfo).firstNotNullOfOrNull {
+                        if (it.groupValues.size > 1) it.groupValues[1] else null
+                    }
+                }
+                var used = 0L
+                try {
+                    val upload = get("upload=([0-9]+)")?.toLong() ?: -1L
+                    if (upload > 0L) {
+                        used += upload
+                    }
+                    val download = get("download=([0-9]+)")?.toLong() ?: -1L
+                    if (download > 0L) {
+                        used += download
+                    }
+                    val total = get("total=([0-9]+)")?.toLong() ?: -1L
+                    subscription.apply {
+                        if (upload > 0L || download > 0L) {
+                            bytesUsed = used
+                            bytesRemaining = if (total > 0L) total - used else -1L
+                        } else {
+                            bytesUsed = -1L
+                            bytesRemaining = -1L
+                        }
+                        expiryDate = get("expire=([0-9]+)")?.toLong() ?: -1L
+                    }
+                } catch (_: Exception) {
+                }
+            } else {
+                subscription.apply {
+                    bytesUsed = -1L
+                    bytesRemaining = -1L
+                    expiryDate = -1L
+                }
+            }
+        }
+
+        proxies.forEach { it.applyDefaultValues() }
+
+        if (subscription.nameFilter.isNotEmpty()) {
+            val pattern = Regex(subscription.nameFilter)
+            proxies = proxies.filter { !pattern.containsMatchIn(it.name) }
+        }
+        if (subscription.nameFilter1.isNotEmpty()) {
+            val pattern = Regex(subscription.nameFilter1)
+            proxies = proxies.filter { pattern.containsMatchIn(it.name) }
+        }
+
+        val proxiesMap = LinkedHashMap<String, AbstractBean>()
+        for (proxy in proxies) {
+            var index = 0
+            var name = proxy.displayName()
+            while (proxiesMap.containsKey(name)) {
+                println("Exists name: $name")
+                index++
+                name = name.replace(" (${index - 1})", "")
+                name = "$name ($index)"
+                proxy.name = name
+            }
+            proxiesMap[proxy.displayName()] = proxy
+        }
+        proxies = proxiesMap.values.toList()
+
+        val exists = NexaProxyDatabase.proxyDao.getByGroup(proxyGroup.id)
+        val duplicate = ArrayList<String>()
+        if (subscription.deduplication) {
+            val uniqueProxies = LinkedHashSet<Protocols.Deduplication>()
+            val uniqueNames = HashMap<Protocols.Deduplication, String>()
+            for (p in proxies) {
+                val proxy = Protocols.Deduplication(p, p.javaClass.toString())
+                if (!uniqueProxies.add(proxy)) {
+                    val index = uniqueProxies.indexOf(proxy)
+                    if (uniqueNames.containsKey(proxy)) {
+                        val name = uniqueNames[proxy]!!.replace(" ($index)", "")
+                        if (name.isNotEmpty()) {
+                            duplicate.add("$name ($index)")
+                            uniqueNames[proxy] = ""
+                        }
+                    }
+                    duplicate.add(p.displayName() + " ($index)")
+                } else {
+                    uniqueNames[proxy] = p.displayName()
+                }
+            }
+            uniqueProxies.retainAll(uniqueNames.keys)
+            proxies = uniqueProxies.toList().map { it.bean }
+        }
+
+        val nameMap = proxies.associateBy { bean ->
+            bean.displayName()
+        }
+
+        val toDelete = ArrayList<ProxyEntity>()
+        val toReplace = exists.mapNotNull { entity ->
+            val name = entity.displayName()
+            if (nameMap.contains(name)) name to entity else let {
+                toDelete.add(entity)
+                null
+            }
+        }.toMap()
+
+        val toUpdate = ArrayList<ProxyEntity>()
+        val added = mutableListOf<String>()
+        val updated = mutableMapOf<String, String>()
+        val deleted = toDelete.map { it.displayName() }
+
+        var userOrder = 1L
+        var changed = toDelete.size
+        for ((name, bean) in nameMap.entries) {
+            if (toReplace.contains(name)) {
+                val entity = toReplace[name]!!
+                val existsBean = entity.requireBean()
+                existsBean.applyFeatureSettings(bean)
+                when {
+                    existsBean != bean -> {
+                        changed++
+                        entity.putBean(bean)
+                        toUpdate.add(entity)
+                        updated[entity.displayName()] = name
+                    }
+                    entity.userOrder != userOrder -> {
+                        entity.putBean(bean)
+                        toUpdate.add(entity)
+                        entity.userOrder = userOrder
+                    }
+                }
+            } else {
+                changed++
+                NexaProxyDatabase.proxyDao.addProxy(ProxyEntity(
+                    groupId = proxyGroup.id, userOrder = userOrder
+                ).apply {
+                    putBean(bean)
+                })
+                added.add(name)
+            }
+            userOrder++
+        }
+
+        NexaProxyDatabase.proxyDao.updateProxy(toUpdate)
+        NexaProxyDatabase.proxyDao.deleteProxy(toDelete)
+
+        subscription.lastUpdated = System.currentTimeMillis() / 1000
+        NexaProxyDatabase.groupDao.updateGroup(proxyGroup)
+        finishUpdate(proxyGroup)
+
+        if (byUser && userInterface != null) {
+            userInterface.onUpdateSuccess(proxyGroup, changed, added, updated, deleted, duplicate)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun parseRaw(text: String): List<AbstractBean>? {
+        try {
+            // Mihomo config, share link collection and Base64-encoded share link collection only.
+            // Mihomo only supports these. Do not extend its scope.
+            val options = DumperOptions()
+            val yaml = Yaml(YAMLConstructor(LoaderOptions()), Representer(options), options, object : Resolver() {
+                override fun addImplicitResolver(tag: Tag, regexp: Pattern, first: String?, limit: Int) {
+                    when (tag) {
+                        Tag.FLOAT -> {}
+                        Tag.BOOL -> super.addImplicitResolver(tag, Pattern.compile("^(?:true|True|TRUE|false|False|FALSE)$"), "tTfF", limit)
+                        else -> super.addImplicitResolver(tag, regexp, first, limit)
+                    }
+                }
+            }).apply {
+                // https://github.com/hineeks/nexaproxy/blob/70e684bae81d4bb4203e860ab88c4319e88f944d/app/src/main/java/com/hineeks/nexaproxy/group/RawUpdater.kt#L229
+                // IDK why but `!<str>` is obviously widely used in Clash ecology
+                // https://github.com/search?q=!%3Cstr%3E&type=code
+                // addTypeDescription(TypeDescription(String::class.java, "str"))
+            }.loadAs(text, Map::class.java)
+            (yaml["proxies"] as? List<Map<String, Any?>>)?.let { proxies ->
+                parseClashProxies(proxies).takeIf { it.isNotEmpty() }?.let {
+                    return it
+                }
+            }
+        } catch (_: Exception) {}
+        try {
+            parseShareLinks(text.decodeBase64()).takeIf { it.isNotEmpty() }?.let {
+                return it
+            }
+        } catch (_: Exception) {}
+        try {
+            parseShareLinks(text).takeIf { it.isNotEmpty() }?.let {
+                return it
+            }
+        } catch (_: Exception) {}
+        return null
+    }
+}

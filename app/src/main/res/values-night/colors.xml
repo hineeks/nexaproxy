@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="fab_color_progress">@color/material_light_white</color>
+    <color name="dropdown_color_background">#3A3A3A</color>
+    <color name="dropdown_color_selected">#4F4F4F</color>
+
+    <color name="gradient_start">#2A1B5C</color>
+    <color name="gradient_center">#1C2D6B</color>
+    <color name="gradient_end">#4A1E4D</color>
+
+    <color name="glass_bar">#99000000</color>
+    <color name="glass_card">#F01B1E2E</color>
+    <color name="glass_stroke">#33FFFFFF</color>
+    <color name="nav_glass">#E6141428</color>
+</resources>

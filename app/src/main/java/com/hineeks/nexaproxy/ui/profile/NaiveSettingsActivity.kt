@@ -1,0 +1,90 @@
+/******************************************************************************
+ *                                                                            *
+ * Copyright (C) 2021 by hineeks             *
+ *                                                                            *
+ * This program is free software: you can redistribute it and/or modify       *
+ * it under the terms of the GNU General Public License as published by       *
+ * the Free Software Foundation, either version 3 of the License, or          *
+ *  (at your option) any later version.                                       *
+ *                                                                            *
+ * This program is distributed in the hope that it will be useful,            *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of             *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              *
+ * GNU General Public License for more details.                               *
+ *                                                                            *
+ * You should have received a copy of the GNU General Public License          *
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.       *
+ *                                                                            *
+ ******************************************************************************/
+
+package com.hineeks.nexaproxy.ui.profile
+
+import android.os.Bundle
+import androidx.preference.EditTextPreference
+import androidx.preference.PreferenceCategory
+import androidx.preference.PreferenceFragmentCompat
+import com.hineeks.nexaproxy.Key
+import com.hineeks.nexaproxy.R
+import com.hineeks.nexaproxy.database.DataStore
+import com.hineeks.nexaproxy.database.preference.EditTextPreferenceModifiers
+import com.hineeks.nexaproxy.fmt.naive.NaiveBean
+import com.hineeks.nexaproxy.ktx.getBooleanProperty
+import com.hineeks.nexaproxy.ktx.unwrapIDN
+
+class NaiveSettingsActivity : ProfileSettingsActivity<NaiveBean>() {
+
+    override fun createEntity() = NaiveBean()
+
+    override fun NaiveBean.init() {
+        DataStore.profileName = name
+        DataStore.serverAddress = serverAddress
+        DataStore.serverPort = serverPort
+        DataStore.serverUsername = username
+        DataStore.serverPassword = password
+        DataStore.serverProtocol = proto
+        DataStore.serverHeaders = extraHeaders
+        DataStore.serverInsecureConcurrency = insecureConcurrency
+        DataStore.serverNaiveNoPostQuantum = noPostQuantum
+        DataStore.serverSNI = sni
+        DataStore.serverCertificates = certificate
+        DataStore.serverSingUot = singUoT
+    }
+
+    override fun NaiveBean.serialize() {
+        name = DataStore.profileName
+        serverAddress = DataStore.serverAddress.unwrapIDN()
+        serverPort = DataStore.serverPort
+        username = DataStore.serverUsername
+        password = DataStore.serverPassword
+        proto = DataStore.serverProtocol
+        extraHeaders = DataStore.serverHeaders
+        insecureConcurrency = DataStore.serverInsecureConcurrency
+        noPostQuantum = DataStore.serverNaiveNoPostQuantum
+        sni = DataStore.serverSNI
+        certificate = DataStore.serverCertificates
+        singUoT = DataStore.serverSingUot
+    }
+
+    override fun PreferenceFragmentCompat.createPreferences(
+        savedInstanceState: Bundle?,
+        rootKey: String?,
+    ) {
+        addPreferencesFromResource(R.xml.naive_preferences)
+        findPreference<EditTextPreference>(Key.SERVER_PORT)!!.apply {
+            setOnBindEditTextListener(EditTextPreferenceModifiers.Port)
+        }
+        findPreference<EditTextPreference>(Key.SERVER_PASSWORD)!!.apply {
+            summaryProvider = PasswordSummaryProvider
+        }
+        findPreference<EditTextPreference>(Key.SERVER_INSECURE_CONCURRENCY)!!.apply {
+            setOnBindEditTextListener(EditTextPreferenceModifiers.Number)
+        }
+        findPreference<EditTextPreference>(Key.SERVER_HEADERS)!!.apply {
+            dialogMessage = getString(R.string.format, "\nKey1: Value1\nKey2: Value2")
+        }
+
+        findPreference<PreferenceCategory>(Key.SERVER_SING_UOT_CATEGORY)!!.isVisible =
+            DataStore.experimentalFlagsProperties.getBooleanProperty("singuot")
+    }
+
+}
