@@ -129,7 +129,7 @@ cd nexaproxy
 <br />
 
 <p align="center">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/ESRB_2000_Everyone.svg/960px-ESRB_2000_Everyone.svg.png" alt="ESRB" width="10%" />
+  <img src="https://i.pinimg.com/736x/f9/09/cd/f909cdcd44b8793db8e893b8e3378616.jpg" alt="" width="10%" />
 </p>
 
 </div>
