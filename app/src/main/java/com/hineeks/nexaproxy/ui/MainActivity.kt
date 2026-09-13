@@ -1,8 +1,6 @@
 /******************************************************************************
  *                                                                            *
  * Copyright (C) 2021 by hineeks             *
- * Copyright (C) 2021 by Max Lv <max.c.lv@gmail.com>                          *
- * Copyright (C) 2021 by Mygod Studio <contact-shadowsocks-android@mygod.be>  *
  *                                                                            *
  * This program is free software: you can redistribute it and/or modify       *
  * it under the terms of the GNU General Public License as published by       *
@@ -29,11 +27,9 @@ import android.os.Build
 import android.os.Bundle
 import android.os.RemoteException
 import android.provider.Settings
-import android.text.util.Linkify
 import android.view.KeyEvent
 import android.view.MenuItem
 import android.view.View
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.IdRes
@@ -65,7 +61,6 @@ import com.hineeks.nexaproxy.group.GroupInterfaceAdapter
 import com.hineeks.nexaproxy.ktx.*
 import com.hineeks.nexaproxy.utils.PackageCache
 import io.noties.markwon.Markwon
-import libexclavecore.Libexclavecore
 
 class MainActivity : ThemedActivity(),
     NexaProxyConnection.Callback,
@@ -164,37 +159,7 @@ class MainActivity : ThemedActivity(),
         }
 
         runOnMainDispatcher {
-            fun getLicenseKeyName(only: Boolean): String {
-                return if (only) "gplv3OnlyAccepted" else "gplv3OrLaterAccepted"
-            }
-            val only = Libexclavecore.buildWithClash()
-            if (DataStore.configurationStore.getBoolean(getLicenseKeyName(only)) != true) {
-                DataStore.configurationStore.putBoolean(getLicenseKeyName(only), true)
-                DataStore.configurationStore.remove(getLicenseKeyName(!only))
-                AlertDialog.Builder(this@MainActivity).apply {
-                    setTitle(R.string.license)
-                    setView(
-                        TextView(this@MainActivity).apply {
-                            setPadding(dp2px(16))
-                            text = getString(if (only) {
-                                R.string.license_gpl_v3_only
-                            } else {
-                                R.string.license_gpl_v3_or_later
-                            })
-                            setTextIsSelectable(true)
-                            Linkify.addLinks(this, Linkify.EMAIL_ADDRESSES or Linkify.WEB_URLS)
-                        }
-                    )
-                    setPositiveButton(android.R.string.ok) { _, _ ->
-                        requestPermissions()
-                    }
-                    setOnCancelListener { _ ->
-                        requestPermissions()
-                    }
-                }.show()
-            } else {
-                requestPermissions()
-            }
+            requestPermissions()
         }
     }
 

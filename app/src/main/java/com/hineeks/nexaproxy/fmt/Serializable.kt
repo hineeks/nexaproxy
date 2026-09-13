@@ -1,8 +1,6 @@
 /******************************************************************************
  * *
  * Copyright (C) 2026 by hineeks <sekai></sekai>@neko.services>                    *
- * Copyright (C) 2021 by Max Lv <max.c.lv></max.c.lv>@gmail.com>                          *
- * Copyright (C) 2021 by Mygod Studio <contact-shadowsocks-android></contact-shadowsocks-android>@mygod.be>  *
  * *
  * This program is free software: you can redistribute it and/or modify       *
  * it under the terms of the GNU General Public License as published by       *

@@ -13,10 +13,6 @@
 
 <br />
 
-<p align="center">
-  <img src="app/src/oss/play/listings/en-US/graphics/feature-graphic/feature-graphic.png" alt="NexaProxy" width="80%" />
-</p>
-
 </div>
 
 ---
@@ -57,13 +53,7 @@
 
 ## Скриншоты
 
-<p align="center">
-  <img src="app/src/oss/play/listings/en-US/graphics/phone-screenshots/01.png" width="19%" />
-  <img src="app/src/oss/play/listings/en-US/graphics/phone-screenshots/02.png" width="19%" />
-  <img src="app/src/oss/play/listings/en-US/graphics/phone-screenshots/03.png" width="19%" />
-  <img src="app/src/oss/play/listings/en-US/graphics/phone-screenshots/04.png" width="19%" />
-  <img src="app/src/oss/play/listings/en-US/graphics/phone-screenshots/05.png" width="19%" />
-</p>
+Скриншоты и логотип скоро появятся здесь.
 
 ---
 

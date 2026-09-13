@@ -1,7 +1,6 @@
 /*******************************************************************************
  *                                                                             *
- *  Copyright (C) 2017 by Max Lv <max.c.lv@gmail.com>                          *
- *  Copyright (C) 2017 by Mygod Studio <contact-shadowsocks-android@mygod.be>  *
+ *  Copyright (C) 2017 by hineeks                                             *
  *                                                                             *
  *  This program is free software: you can redistribute it and/or modify       *
  *  it under the terms of the GNU General Public License as published by       *
