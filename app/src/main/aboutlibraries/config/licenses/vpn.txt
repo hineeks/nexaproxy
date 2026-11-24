@@ -1,0 +1,8 @@
+#subscription-userinfo: upload=0; download=5368709120; total=5368709120; expire=1684800
+#profile-title: "⚡ HighVPN - @hineeks ⚡"
+#subscription-autoconnect: lowestdelay
+
+vless://3414ce06-6c17-41ff-9a5d-d3c32bf8c8e4@31.77.52.37:443?encryption=none&flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=edge&pbk=10rVZPoOUP1TlQviIAsQ_jAROX0fRQxH0C92nq_zGQc&sid=43dcff53849b81e6&sni=77d99247b51d.j.cloudfront.hls.ttvnw.net#🇪🇺 Авто | Самый быстрый
+vless://3414ce06-6c17-41ff-9a5d-d3c32bf8c8e4@31.77.52.37:443?encryption=none&flow=xtls-rprx-vision&type=tcp&headerType=none&security=reality&fp=edge&pbk=10rVZPoOUP1TlQviIAsQ_jAROX0fRQxH0C92nq_zGQc&sid=43dcff53849b81e6&sni=8a11e6a89110.j.cloudfront.hls.ttvnw.net#⬇️ Быстрые | до 25 Гбит/с ⬇️
+
+hysteria2://3414ce06-6c17-41ff-9a5d-d3c32bf8c8e4@31.77.52.40:30443?sni=hy.quattro-tech.ru&alpn=h3&obfs=salamander&obfs-password=5ufHeSMNZOCvfEJb-vdcRcf1rwKFISUjOEHUMdlraoo&insecure=0#🇩🇪 🎮 ⚡️ ⭐️ Германия | Hysteria2
